@@ -1,0 +1,18 @@
+= algen
+ifdef::env-github[]
+:tip-caption: :bulb:
+:note-caption: :information_source:
+:important-caption: :heavy_exclamation_mark:
+:caution-caption: :fire:
+:warning-caption: :warning:
+endif::[]
+:toc: left
+
+*algen* is a pure Lua (LuaJIT) library designed for **Al**gorithmic **Gen**eration.
+
+.Principles
+Portability:: A generator must have consistent output and state format across platforms.
+Stability:: A generator must have stable output and state format over time, i.e. backward compatibility.
+Performance:: Generating random data is a fundamental operation which can be heavily used by complex generations, thus performances might be critical.
+
+See link:src[].
