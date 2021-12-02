@@ -26,9 +26,29 @@ SOFTWARE.
 
 local ffi = require("ffi")
 local bit = require("bit")
-
-local band, bor, bxor, lshift, rshift = bit.band, bit.bor, bit.bxor, bit.lshift, bit.rshift
 local LuaJIT_2_1 = jit.version:find("2%.1%.") ~= nil
+
+local band, bor, bxor = bit.band, bit.bor, bit.bxor
+local band64, bor64, bxor64, lshift64, rshift64 = bit.band, bit.bor, bit.bxor, bit.lshift, bit.rshift
+-- Implement 64bit bitwise operations for LuaJIT 2.0.
+if not LuaJIT_2_1 then
+  local function split(a) return tonumber(a / 2^32), tonumber(a % 2^32) end
+  local function merge(h, l) return h*2^32ULL + l end
+  local function op(f, a, b)
+    local ah, al = split(a)
+    local bh, bl = split(b)
+    local h, l = f(ah, bh), f(al, bl)
+    -- convert to unsigned
+    if h < 0 then h = h+0x100000000 end
+    if l < 0 then l = l+0x100000000 end
+    return merge(h, l)
+  end
+  band64 = function(a, b) return op(band, a, b) end
+  bor64 = function(a, b) return op(bor, a, b) end
+  bxor64 = function(a, b) return op(bxor, a, b) end
+  lshift64 = function(a, n) return a * 2ULL^n end
+  rshift64 = function(a, n) return a / 2ULL^n end
+end
 
 local algen = {}
 
@@ -36,22 +56,18 @@ local U64double = ffi.typeof("union{ uint64_t u64; double d; }")
 
 -- generator
 
-ffi.cdef[[
-struct algen_generator_t{
-  uint64_t u[4];
-};
-]]
+ffi.cdef[[ struct algen_generator_t{ uint64_t u[4]; } ]]
 
 local generator = {}
 local generator_t = ffi.typeof("struct algen_generator_t")
 
 local function TW223_gen(self, r, i, k, q, s)
   local z = self.u[i]
-  z = bxor(
-    rshift(bxor(lshift(z, q), z), k-s),
-    lshift(band(z, lshift(0xffffffffffffffffULL, 64-k)), s)
+  z = bxor64(
+    rshift64(bxor64(lshift64(z, q), z), k-s),
+    lshift64(band64(z, lshift64(0xffffffffffffffffULL, 64-k)), s)
   )
-  r = bxor(r, z)
+  r = bxor64(r, z)
   self.u[i] = z
   return r
 end
@@ -86,7 +102,7 @@ end
 function generator:random(m, n)
   local r = generator_step(self)
   local u = U64double()
-  u.u64 = bor(band(r, 0x000fffffffffffffULL), 0x3ff0000000000000ULL)
+  u.u64 = bor64(band64(r, 0x000fffffffffffffULL), 0x3ff0000000000000ULL)
   local d = u.d-1
   return d
 end
