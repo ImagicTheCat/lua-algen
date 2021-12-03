@@ -38,10 +38,7 @@ if not LuaJIT_2_1 then
     local ah, al = split(a)
     local bh, bl = split(b)
     local h, l = f(ah, bh), f(al, bl)
-    -- convert to unsigned
-    if h < 0 then h = h+0x100000000 end
-    if l < 0 then l = l+0x100000000 end
-    return merge(h, l)
+    return merge(h % 2^32ULL, l % 2^32ULL) -- convert h and l to 32bit unsigned
   end
   band64 = function(a, b) return op(band, a, b) end
   bor64 = function(a, b) return op(bor, a, b) end
