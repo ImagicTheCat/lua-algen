@@ -16,3 +16,33 @@ Stability:: A generator must have stable output and state format over time, i.e.
 Performance:: Generating random data is a fundamental operation which can be heavily used by complex generations, thus performances might be critical.
 
 See link:src[].
+
+== API
+
+[source, lua]
+----
+-- Create a new generator.
+-- Implements the same random function as LuaJIT's math.random(), a Tausworthe
+-- PRNG with period 2^223 (see LuaJIT's documentation). It produces the same sequences.
+--
+-- seed: (optional) number (default: 0)
+algen.generator(seed)
+----
+
+[source, lua]
+----
+-- Generate random number (generator step).
+-- Same API as math.random([m [, n]]).
+-- Alias: generator(...)
+generator:random(m, n)
+
+-- Generate uint64_t cdata (ULL) random number (generator step).
+generator:randomU64()
+
+-- Save the state of the generator as a portable platform-independent string.
+generator:save()
+
+-- Load a previously saved state into the generator.
+-- state: string
+generator:load(state)
+----
