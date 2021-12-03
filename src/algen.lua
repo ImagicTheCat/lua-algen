@@ -117,6 +117,7 @@ end
 
 -- 1 << 64-k[i] constants
 local K_SEED = {0x2, 0x40, 0x200, 0x20000}
+local u = U64double() -- optimization: avoid allocation
 
 -- Create a new generator.
 -- Implements the same random function as LuaJIT's math.random(), a Tausworthe
@@ -128,7 +129,6 @@ function algen.generator(seed)
   if type(seed) ~= "number" then error("seed must be a number") end
   local generator = ffi.new(generator_t)
   -- seed the states
-  local u = U64double()
   for i=1,4 do
     seed = seed * 3.14159265358979323846 + 2.7182818284590452354
     u.d = seed
@@ -148,7 +148,6 @@ generator.randomU64 = generator_step
 -- Alias: generator(...)
 function generator:random(m, n)
   local r = generator_step(self)
-  local u = U64double()
   -- "Returns a double bit pattern in the range 1.0 <= d < 2.0."
   u.u64 = bor64(band64(r, 0x000fffffffffffffULL), 0x3ff0000000000000ULL)
   local d = u.d-1 -- d is a double in range [0, 1]
