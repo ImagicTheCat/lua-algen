@@ -28,21 +28,24 @@ local ffi = require("ffi")
 local bit = require("bit")
 local LuaJIT_2_1 = jit.version:find("2%.1%.") ~= nil
 
-local band, bor, bxor = bit.band, bit.bor, bit.bxor
 local band64, bor64, bxor64, lshift64, rshift64 = bit.band, bit.bor, bit.bxor, bit.lshift, bit.rshift
+local tonumber = tonumber
 -- Implement 64bit bitwise operations for LuaJIT 2.0.
 if not LuaJIT_2_1 then
-  local function split(a) return tonumber(a / 2^32), tonumber(a % 2^32) end
-  local function merge(h, l) return h*2^32ULL + l end
-  local function op(f, a, b)
-    local ah, al = split(a)
-    local bh, bl = split(b)
-    local h, l = f(ah, bh), f(al, bl)
-    return merge(h % 2^32ULL, l % 2^32ULL) -- convert h and l to 32bit unsigned
+--  local function split(a) return tonumber(a / 2^32), tonumber(a % 2^32) end
+--  local function merge(h, l) return h*2^32ULL + l end
+  local function op(f)
+    return function(a, b)
+      local ah, al = tonumber(a / 2^32), tonumber(a % 2^32) -- split(a)
+      local bh, bl = tonumber(b / 2^32), tonumber(b % 2^32) -- split(b)
+      local h, l = f(ah, bh), f(al, bl) -- apply 32bit op
+      h,l = h % 2^32ULL, l % 2^32ULL -- convert h and l to 32bit unsigned
+      -- Interesting note: with LuaJIT 2.0.5, using `h < 0 => add 0x100000000`
+      -- instead of modulo results in a pathological JIT compilation with flushing.
+      return h*2^32ULL + l -- merge(h, l)
+    end
   end
-  band64 = function(a, b) return op(band, a, b) end
-  bor64 = function(a, b) return op(bor, a, b) end
-  bxor64 = function(a, b) return op(bxor, a, b) end
+  band64, bor64, bxor64 = op(bit.band), op(bit.bor), op(bit.bxor)
   lshift64 = function(a, n) return a * 2ULL^n end
   rshift64 = function(a, n) return a / 2ULL^n end
 end
